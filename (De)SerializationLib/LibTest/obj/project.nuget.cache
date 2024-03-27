@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "RFy2Uq4+q0RER20tpWAihhFU+x60j+B8kWgAPv2XdIrAJujdcz4bcpRNRvnbDaHouq4nNNx9Yvfznr+8M6dAVg==",
+  "success": true,
+  "projectFilePath": "C:\\AgendaCalendarSerializationLib\\(De)SerializationLib\\LibTest\\LibTest.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Егор\\.nuget\\packages\\ical.net\\4.2.0\\ical.net.4.2.0.nupkg.sha512",
+    "C:\\Users\\Егор\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512",
+    "C:\\Users\\Егор\\.nuget\\packages\\nodatime\\3.0.0\\nodatime.3.0.0.nupkg.sha512",
+    "C:\\Users\\Егор\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\4.7.1\\system.runtime.compilerservices.unsafe.4.7.1.nupkg.sha512"
+  ],
+  "logs": []
+}
