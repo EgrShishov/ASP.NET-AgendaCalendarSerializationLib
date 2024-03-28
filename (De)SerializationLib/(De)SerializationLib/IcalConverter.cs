@@ -13,7 +13,7 @@ namespace _De_SerializationLib
         public static string Serialize(object obj)
         {
             if (obj is not Calendar) { throw new ArgumentException("Object is not of type AgendaCalendar", nameof(obj)); }
-            
+
             Calendar calendar = (Calendar)obj;
             IcalCalendar ical = new IcalCalendar();
 
@@ -25,11 +25,11 @@ namespace _De_SerializationLib
                     recurrency_pattern = new RecurrencePattern()
                     {
                         Interval = calendarEvent.ReccurenceRules.Interval,
-                        Frequency = ConvertTo(calendarEvent.ReccurenceRules.Frequency),
+                        Frequency = ConvertToFrequencyType(calendarEvent.ReccurenceRules.Frequency),
                         ByDay = ConvertToWeekDay(calendarEvent.ReccurenceRules.DaysOfWeek),
-                        ByWeekNo = calendarEvent.ReccurenceRules.WeeksOfMonth,
-                        ByMonth = calendarEvent.ReccurenceRules.MonthsOfYear,
-                        ByMonthDay = calendarEvent.ReccurenceRules.DaysOfMonth
+                        ByWeekNo = calendarEvent.ReccurenceRules.WeeksOfMonth ?? new List<int>(),
+                        ByMonth = calendarEvent.ReccurenceRules.MonthsOfYear ?? new List<int>(),
+                        ByMonthDay = calendarEvent.ReccurenceRules.DaysOfMonth ?? new List<int>(),
                     };
                 }
 
@@ -46,10 +46,10 @@ namespace _De_SerializationLib
                     Location = calendarEvent.Location
                 };
 
-                if(calendarEvent.ReccurenceRules is not null)
+                if (calendarEvent.ReccurenceRules is not null)
                 {
                     @event.RecurrenceRules = rules;
-                    if(calendarEvent.ReccurenceRules.RecurrenceDates is not null)
+                    if (calendarEvent.ReccurenceRules.RecurrenceDates is not null)
                     {
                         @event.RecurrenceDates = ConvertToPeriodList(calendarEvent.ReccurenceRules.RecurrenceDates);
                     }
@@ -57,7 +57,7 @@ namespace _De_SerializationLib
                 ical.Events.Add(@event);
             }
 
-            ical.Name = calendar.Title;
+            //ical.Calendar = calendar.Title; //how to set calendar's name and descr?
             var serializer = new CalendarSerializer();
             var serializedCalendar = serializer.SerializeToString(ical);
             return serializedCalendar;
@@ -65,53 +65,58 @@ namespace _De_SerializationLib
 
         public static Calendar Deserialize(string ical_format)
         {
-            IcalCalendar ical_calendar = IcalCalendar.Load(ical_format); 
-            var title = ical_calendar.Name;
+            IcalCalendar ical_calendar = IcalCalendar.Load(new StringReader(ical_format));
+            if (ical_calendar is null) return new Calendar();
+            //var title = ical_calendar.Name;
             var events = new List<Event>();
 
             foreach (var IcalEvent in ical_calendar.Events)
             {
-
                 var @event = new Event()
                 {
-                    Title = IcalEvent.Summary,
+                    Title = IcalEvent.Summary ?? "NonameEvent",
                     StartTime = IcalEvent.Start.Value,
-                    EndTime = IcalEvent.End.Value,
-                    Description = IcalEvent.Description,
+                    //EndTime = IcalEvent.End.Value,
+                    Description = IcalEvent.Description ?? "",
                     EventParticipants = new List<EventParticipant>(),
-                    Location = IcalEvent.Location,
+                    Location = IcalEvent.Location ?? "",
                 };
                 if (IcalEvent.RecurrenceRules is not null)
                 {
-                    foreach(var rec_rule in IcalEvent.RecurrenceRules)
+                    foreach (var rec_rule in IcalEvent.RecurrenceRules)
                     {
                         if (rec_rule is null) continue;
                         var rec_rules = IcalEvent.RecurrenceRules[0];
                         var reccurencyRule = new RecurrenceRule()
                         {
                             Interval = rec_rules.Interval,
-                            Frequency = ConvertToRecurrenceFrequency(rec_rules.Frequency),
+                            Frequency = ConvertFromFrequencyType(rec_rules.Frequency),
                             DaysOfWeek = ConvertFromWeekDay(rec_rules.ByDay),
-                            WeeksOfMonth = rec_rules.ByWeekNo,
-                            MonthsOfYear = rec_rules.ByMonth,
-                            DaysOfMonth = rec_rules.ByMonthDay
+                            WeeksOfMonth = rec_rules.ByWeekNo ?? new List<int>(),
+                            MonthsOfYear = rec_rules.ByMonth ?? new List<int>(),
+                            DaysOfMonth = rec_rules.ByMonthDay ?? new List<int>(),
                         };
                         @event.ReccurenceRules = reccurencyRule;
+                        if (IcalEvent.RecurrenceDates is not null)
+                        {
+                            @event.ReccurenceRules.RecurrenceDates = ConvertFromPeriodList(IcalEvent.RecurrenceDates);
+                        }
                     }
                 }
+
                 events.Add(@event);
             }
 
-            var calendar = new Calendar() 
+            var calendar = new Calendar()
             {
                 Events = events,
                 Reminders = new List<Reminder>(),
-                Title = ical_calendar.Name,
+                //Title = ical_calendar.Name,
             };
             return calendar;
         }
 
-        private static FrequencyType ConvertTo(RecurrenceFrequency frequency)
+        private static FrequencyType ConvertToFrequencyType(RecurrenceFrequency frequency)
         {
             switch (frequency)
             {
@@ -128,7 +133,7 @@ namespace _De_SerializationLib
             }
         }
 
-        public static RecurrenceFrequency ConvertToRecurrenceFrequency(FrequencyType frequencyType)
+        private static RecurrenceFrequency ConvertFromFrequencyType(FrequencyType frequencyType)
         {
             switch (frequencyType)
             {
@@ -217,19 +222,29 @@ namespace _De_SerializationLib
             return WeekDays;
         }
 
-        public static IList<PeriodList> ConvertToPeriodList(List<TimePeriod> periodDates)
+        private static IList<PeriodList> ConvertToPeriodList(List<TimePeriod> periodDates)
         {
             var periodList = new List<PeriodList>();
-
             foreach (var date in periodDates)
             {
-                /*periodList.Add(new Period()
-                {
-                    //StartTime = date.StartTime,
-                    //EndTime = date.EndTime,
-                });*/
+                var list = new PeriodList() { new Ical.Net.DataTypes.Period(new CalDateTime(date.StartTime), new CalDateTime(date.EndTime)) };
+                periodList.Add(list);
             }
             return periodList;
+        }
+
+        private static List<TimePeriod> ConvertFromPeriodList(IList<PeriodList> periodList)
+        {
+            var timePeriods = new List<TimePeriod>();
+            foreach (var period in periodList)
+            {
+                var timePeriod = new TimePeriod()
+                {
+                    StartTime = Convert.ToDateTime(period[0].StartTime),
+                    EndTime = Convert.ToDateTime(period[0].EndTime)
+                };
+            }
+            return timePeriods;
         }
     }
 }
