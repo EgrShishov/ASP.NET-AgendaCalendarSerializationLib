@@ -73,6 +73,7 @@ var text = "BEGIN:VCALENDAR\r\nPRODID:-//Google Inc//Google Calendar 70.9054//EN
 var second_text = "BEGIN:VCALENDAR\r\nPRODID:-//Google Inc//Google Calendar 70.9054//EN\r\nVERSION:2.0\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:Дни рождения\r\nX-WR-TIMEZONE:UTC\r\nX-WR-CALDESC:Показывает дни рождения\\, годовщины и другие значимые события \r\n для людей в Google Контактах.\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20231201\r\nDTEND;VALUE=DATE:20231202\r\nDTSTAMP:20240328T075307Z\r\nUID:2023_BIRTHDAY_self@google.com\r\nX-GOOGLE-CALENDAR-CONTENT-DISPLAY:CHIP\r\nX-GOOGLE-CALENDAR-CONTENT-ICON:https://calendar.google.com/googlecalendar/i\r\n mages/cake.gif\r\nCLASS:PUBLIC\r\nCREATED:20240324T154517Z\r\nDESCRIPTION:С днем рождения!\r\nLAST-MODIFIED:20240324T154517Z\r\nSEQUENCE:0\r\nSTATUS:CONFIRMED\r\nSUMMARY:С днем рождения!\r\nTRANSP:OPAQUE\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20241201\r\nDTEND;VALUE=DATE:20241202\r\nDTSTAMP:20240328T075307Z\r\nUID:2024_BIRTHDAY_self@google.com\r\nX-GOOGLE-CALENDAR-CONTENT-DISPLAY:CHIP\r\nX-GOOGLE-CALENDAR-CONTENT-ICON:https://calendar.google.com/googlecalendar/i\r\n mages/cake.gif\r\nCLASS:PUBLIC\r\nCREATED:20240324T154517Z\r\nDESCRIPTION:С днем рождения!\r\nLAST-MODIFIED:20240324T154517Z\r\nSEQUENCE:0\r\nSTATUS:CONFIRMED\r\nSUMMARY:С днем рождения!\r\nTRANSP:OPAQUE\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20251201\r\nDTEND;VALUE=DATE:20251202\r\nDTSTAMP:20240328T075307Z\r\nUID:2025_BIRTHDAY_self@google.com\r\nX-GOOGLE-CALENDAR-CONTENT-DISPLAY:CHIP\r\nX-GOOGLE-CALENDAR-CONTENT-ICON:https://calendar.google.com/googlecalendar/i\r\n mages/cake.gif\r\nCLASS:PUBLIC\r\nCREATED:20240324T154517Z\r\nDESCRIPTION:С днем рождения!\r\nLAST-MODIFIED:20240324T154517Z\r\nSEQUENCE:0\r\nSTATUS:CONFIRMED\r\nSUMMARY:С днем рождения!\r\nTRANSP:OPAQUE\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
 var calendar_deserialized = IcalConverter.Deserialize(second_text);
 
+Console.WriteLine(calendar_deserialized.CalendarDescription);
 foreach (var eve in calendar_deserialized.Events)
 {
     Console.WriteLine(eve); 
@@ -81,8 +82,6 @@ foreach (var eve in calendar_deserialized.Events)
         Console.WriteLine(eve.ReccurenceRules.Interval);
     }
 }
-
-while (true) { }
 
 var json = JsonConverter<Calendar>.Serialize(calendar);
 Console.WriteLine(json);

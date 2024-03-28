@@ -57,7 +57,8 @@ namespace _De_SerializationLib
                 ical.Events.Add(@event);
             }
 
-            //ical.Calendar = calendar.Title; //how to set calendar's name and descr?
+            ical.Properties.Add(new CalendarProperty("X-WR-CALNAME", calendar.Title));
+            ical.Properties.Add(new CalendarProperty("X-WR-CALDESC", calendar.CalendarDescription));
             var serializer = new CalendarSerializer();
             var serializedCalendar = serializer.SerializeToString(ical);
             return serializedCalendar;
@@ -67,7 +68,8 @@ namespace _De_SerializationLib
         {
             IcalCalendar ical_calendar = IcalCalendar.Load(new StringReader(ical_format));
             if (ical_calendar is null) return new Calendar();
-            //var title = ical_calendar.Name;
+            var title = ical_calendar.Properties.First(x => x.Name == "X-WR-CALNAME").Value.ToString() ?? "";
+            var description = ical_calendar.Properties.First(x => x.Name == "X-WR-CALDESC").Value.ToString() ?? "";
             var events = new List<Event>();
 
             foreach (var IcalEvent in ical_calendar.Events)
@@ -76,7 +78,7 @@ namespace _De_SerializationLib
                 {
                     Title = IcalEvent.Summary ?? "NonameEvent",
                     StartTime = IcalEvent.Start.Value,
-                    //EndTime = IcalEvent.End.Value,
+                    EndTime = IcalEvent.End.Value,
                     Description = IcalEvent.Description ?? "",
                     EventParticipants = new List<EventParticipant>(),
                     Location = IcalEvent.Location ?? "",
@@ -111,7 +113,8 @@ namespace _De_SerializationLib
             {
                 Events = events,
                 Reminders = new List<Reminder>(),
-                //Title = ical_calendar.Name,
+                CalendarDescription = description,
+                Title = title
             };
             return calendar;
         }
