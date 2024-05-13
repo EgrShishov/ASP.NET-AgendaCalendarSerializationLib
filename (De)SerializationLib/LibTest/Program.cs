@@ -1,15 +1,12 @@
-﻿// See https://aka.ms/new-console-template for more information
-using _De_SerializationLib;
+﻿using _De_SerializationLib;
 using AgendaCalendar.Domain.Entities;
 
-Console.WriteLine("Hello, World!");
-
-var events = new List<Event>() { new Event() 
-{ 
+var events = new List<Event>() { new Event()
+{
     Id = 79,
-    Description = "New event!", 
-    AuthorId = 1, 
-    StartTime = DateTime.Now, 
+    Description = "New event!",
+    AuthorId = 1,
+    StartTime = DateTime.Now,
     EndTime = DateTime.Now.AddDays(2),
     EventParticipants = new List<EventParticipant>()
     {
@@ -39,19 +36,20 @@ var events = new List<Event>() { new Event()
 },
     new Event()
     {
-        Id = 2313,
+        Id = 3212,
         Title = "Pizdec",
         Description = "Reccuring event!",
         AuthorId = 1,
         StartTime = DateTime.Now.AddDays(2),
         EndTime = DateTime.Now.AddDays(5),
         Location = "Mam's house",
-        ReccurenceRules = new RecurrenceRule()
+        ReccurenceRules = new RecurrenceRule
         {
-            DaysOfMonth = new List<int>(){1, 4, 6, 20},
-            Interval = 1,
-            Frequency = RecurrenceFrequency.Daily,
-            RecurrenceDates = new List<TimePeriod>(){ new TimePeriod() {StartTime = DateTime.Now.AddMonths(1), EndTime = DateTime.Now.AddMonths(2) } }
+            freq = "none",
+            interval = 0,
+            byweekday = [],
+            dtstart = "",
+            until = ""
         }
     }
 };
@@ -63,8 +61,11 @@ var calendar = new Calendar()
     Title = "Test",
     Events = events,
     Reminders = new List<Reminder>(),
-    Subscribers = new List<int>(),
+    SubscribersId = new List<int>(),
 };
+
+var json = JsonConverter.GetJsonEventList(calendar.CalendarColor, calendar.Events);
+Console.WriteLine(json);
 
 var serialized = IcalConverter.Serialize(calendar);
 Console.WriteLine(serialized);
@@ -76,14 +77,20 @@ var calendar_deserialized = IcalConverter.Deserialize(second_text);
 Console.WriteLine(calendar_deserialized.CalendarDescription);
 foreach (var eve in calendar_deserialized.Events)
 {
-    Console.WriteLine(eve); 
+    Console.WriteLine(eve);
     if (eve.ReccurenceRules is not null)
     {
-        Console.WriteLine(eve.ReccurenceRules.Interval);
+        Console.WriteLine(eve.ReccurenceRules.freq);
     }
 }
 
-var json = JsonConverter<Calendar>.Serialize(calendar);
-Console.WriteLine(json);
-var json_serialized_calendar =  JsonConverter<Calendar>.Deserialize(json);
-Console.WriteLine(json_serialized_calendar.CalendarDescription);
+var mama = IcalConverter.Deserialize(second_text);
+Console.WriteLine(mama.Title, mama.CalendarDescription);
+
+var deserialized = JsonConverter.GetJsonEventList("blue", mama.Events);
+Console.WriteLine(deserialized);
+var papa = JsonConverter.GetEventListFromJson(deserialized);
+foreach (var item in papa)
+{
+    Console.WriteLine(papa);
+}

@@ -20,16 +20,14 @@ namespace _De_SerializationLib
             foreach (var calendarEvent in calendar.Events)
             {
                 var recurrency_pattern = new RecurrencePattern();
-                if (calendarEvent.ReccurenceRules is not null)
+                if (calendarEvent.ReccurenceRules.freq != "none")
                 {
                     recurrency_pattern = new RecurrencePattern()
                     {
-                        Interval = calendarEvent.ReccurenceRules.Interval,
-                        Frequency = ConvertToFrequencyType(calendarEvent.ReccurenceRules.Frequency),
-                        ByDay = ConvertToWeekDay(calendarEvent.ReccurenceRules.DaysOfWeek),
-                        ByWeekNo = calendarEvent.ReccurenceRules.WeeksOfMonth ?? new List<int>(),
-                        ByMonth = calendarEvent.ReccurenceRules.MonthsOfYear ?? new List<int>(),
-                        ByMonthDay = calendarEvent.ReccurenceRules.DaysOfMonth ?? new List<int>(),
+                        Frequency = ConvertToFrequencyType(calendarEvent.ReccurenceRules.freq),
+                        Interval = calendarEvent.ReccurenceRules.interval,
+                        ByDay = ConvertToWeekDay(calendarEvent.ReccurenceRules.byweekday),
+                        Until = DateTime.Parse(calendarEvent.ReccurenceRules.until, null)
                     };
                 }
 
@@ -43,22 +41,19 @@ namespace _De_SerializationLib
                     Description = calendarEvent.Description,
                     Uid = calendarEvent.Id.ToString(),
                     Organizer = new Organizer("email@yandex.ru"),
-                    Location = calendarEvent.Location
+                    Location = calendarEvent.Location,
                 };
 
                 if (calendarEvent.ReccurenceRules is not null)
                 {
                     @event.RecurrenceRules = rules;
-                    if (calendarEvent.ReccurenceRules.RecurrenceDates is not null)
-                    {
-                        @event.RecurrenceDates = ConvertToPeriodList(calendarEvent.ReccurenceRules.RecurrenceDates);
-                    }
                 }
                 ical.Events.Add(@event);
             }
 
             ical.Properties.Add(new CalendarProperty("X-WR-CALNAME", calendar.Title));
             ical.Properties.Add(new CalendarProperty("X-WR-CALDESC", calendar.CalendarDescription));
+            ical.Properties.Add(new CalendarProperty("X-WR-COLOR", calendar.CalendarColor));
             var serializer = new CalendarSerializer();
             var serializedCalendar = serializer.SerializeToString(ical);
             return serializedCalendar;
@@ -68,45 +63,53 @@ namespace _De_SerializationLib
         {
             IcalCalendar ical_calendar = IcalCalendar.Load(new StringReader(ical_format));
             if (ical_calendar is null) return new Calendar();
-            var title = ical_calendar.Properties.First(x => x.Name == "X-WR-CALNAME").Value.ToString() ?? "";
-            var description = ical_calendar.Properties.First(x => x.Name == "X-WR-CALDESC").Value.ToString() ?? "";
+            var title = string.Empty;
+            var description = string.Empty;
+            var calendarColor = string.Empty;
+            if (ical_calendar.Properties.Any())
+            {
+                title = description = ical_calendar.Properties.ContainsKey("X-WR-CALNAME") ? 
+                    ical_calendar.Properties.First(x => x.Name == "X-WR-CALNAME").Value.ToString() : "";
+                description = ical_calendar.Properties.ContainsKey("X-WR-CALDESC") ? 
+                    ical_calendar.Properties.First(x => x.Name == "X-WR-CALDESC").Value.ToString() : "";
+                calendarColor = ical_calendar.Properties.ContainsKey("X-WR-COLOR") ? 
+                    ical_calendar.Properties.First(x => x.Name == "X-WR-COLOR").Value.ToString() : "";
+            }
             var events = new List<Event>();
 
-            foreach (var IcalEvent in ical_calendar.Events)
+            if (ical_calendar.Events.Any())
             {
-                var @event = new Event()
+                foreach (var IcalEvent in ical_calendar.Events)
                 {
-                    Title = IcalEvent.Summary ?? "NonameEvent",
-                    StartTime = IcalEvent.Start.Value,
-                    EndTime = IcalEvent.End.Value,
-                    Description = IcalEvent.Description ?? "",
-                    EventParticipants = new List<EventParticipant>(),
-                    Location = IcalEvent.Location ?? "",
-                };
-                if (IcalEvent.RecurrenceRules is not null)
-                {
-                    foreach (var rec_rule in IcalEvent.RecurrenceRules)
+                    var @event = new Event()
                     {
-                        if (rec_rule is null) continue;
-                        var rec_rules = IcalEvent.RecurrenceRules[0];
-                        var reccurencyRule = new RecurrenceRule()
+                        Title = IcalEvent.Summary ?? "NonameEvent",
+                        StartTime = IcalEvent.Start?.Value ?? DateTime.MinValue,
+                        EndTime = IcalEvent.End?.Value ?? DateTime.MinValue,
+                        Description = IcalEvent.Description ?? "",
+                        EventParticipants = new List<EventParticipant>(),
+                        Location = IcalEvent.Location ?? "",
+                    };
+                    if (IcalEvent.RecurrenceRules is not null)
+                    {
+                        foreach (var rec_rule in IcalEvent.RecurrenceRules)
                         {
-                            Interval = rec_rules.Interval,
-                            Frequency = ConvertFromFrequencyType(rec_rules.Frequency),
-                            DaysOfWeek = ConvertFromWeekDay(rec_rules.ByDay),
-                            WeeksOfMonth = rec_rules.ByWeekNo ?? new List<int>(),
-                            MonthsOfYear = rec_rules.ByMonth ?? new List<int>(),
-                            DaysOfMonth = rec_rules.ByMonthDay ?? new List<int>(),
-                        };
-                        @event.ReccurenceRules = reccurencyRule;
-                        if (IcalEvent.RecurrenceDates is not null)
-                        {
-                            @event.ReccurenceRules.RecurrenceDates = ConvertFromPeriodList(IcalEvent.RecurrenceDates);
+                            if (rec_rule.Frequency == FrequencyType.None) continue;
+                            var rec_rules = IcalEvent.RecurrenceRules[0];
+                            var reccurencyRule = new RecurrenceRule()
+                            {
+                                freq = ConvertFromFrequencyType(rec_rules.Frequency),
+                                interval = rec_rules.Interval,
+                                byweekday = ConvertFromWeekDay(rec_rules.ByDay),
+                                dtstart = Convert.ToString(IcalEvent.Start?.Value ?? DateTime.MinValue),
+                                until = Convert.ToString(rec_rules.Until)
+                            };
+                            @event.ReccurenceRules = reccurencyRule;
                         }
                     }
-                }
 
-                events.Add(@event);
+                    events.Add(@event);
+                }
             }
 
             var calendar = new Calendar()
@@ -114,46 +117,47 @@ namespace _De_SerializationLib
                 Events = events,
                 Reminders = new List<Reminder>(),
                 CalendarDescription = description,
-                Title = title
+                Title = title,
+                CalendarColor = calendarColor
             };
             return calendar;
         }
 
-        private static FrequencyType ConvertToFrequencyType(RecurrenceFrequency frequency)
+        private static FrequencyType ConvertToFrequencyType(string frequency)
         {
             switch (frequency)
             {
-                case RecurrenceFrequency.Daily:
+                case "daily":
                     return FrequencyType.Daily;
-                case RecurrenceFrequency.Monthly:
+                case "monthly":
                     return FrequencyType.Monthly;
-                case RecurrenceFrequency.Weekly:
+                case "weekly":
                     return FrequencyType.Weekly;
-                case RecurrenceFrequency.Yearly:
+                case "yearly":
                     return FrequencyType.Yearly;
                 default:
                     return FrequencyType.None;
             }
         }
 
-        private static RecurrenceFrequency ConvertFromFrequencyType(FrequencyType frequencyType)
+        private static string ConvertFromFrequencyType(FrequencyType frequencyType)
         {
             switch (frequencyType)
             {
                 case FrequencyType.Daily:
-                    return RecurrenceFrequency.Daily;
+                    return "daily";
                 case FrequencyType.Monthly:
-                    return RecurrenceFrequency.Monthly;
+                    return "monthly";
                 case FrequencyType.Weekly:
-                    return RecurrenceFrequency.Weekly;
+                    return "weekly";
                 case FrequencyType.Yearly:
-                    return RecurrenceFrequency.Yearly;
+                    return "yearly";
                 default:
-                    return RecurrenceFrequency.None;
+                    return "none";
             }
         }
 
-        private static List<WeekDay> ConvertToWeekDay(List<RecurrenceDayOfWeek> days)
+        private static List<WeekDay> ConvertToWeekDay(List<string> days)
         {
             var WeekDays = new List<WeekDay>();
             if (days is null) return WeekDays;
@@ -161,25 +165,25 @@ namespace _De_SerializationLib
             {
                 switch (day)
                 {
-                    case RecurrenceDayOfWeek.Monday:
+                    case "mo":
                         WeekDays.Add(new WeekDay() { DayOfWeek = DayOfWeek.Monday });
                         break;
-                    case RecurrenceDayOfWeek.Tuesday:
+                    case "tu":
                         WeekDays.Add(new WeekDay() { DayOfWeek = DayOfWeek.Tuesday });
                         break;
-                    case RecurrenceDayOfWeek.Wednesday:
+                    case "we":
                         WeekDays.Add(new WeekDay() { DayOfWeek = DayOfWeek.Wednesday });
                         break;
-                    case RecurrenceDayOfWeek.Thursday:
+                    case "th":
                         WeekDays.Add(new WeekDay() { DayOfWeek = DayOfWeek.Thursday });
                         break;
-                    case RecurrenceDayOfWeek.Friday:
+                    case "fr":
                         WeekDays.Add(new WeekDay() { DayOfWeek = DayOfWeek.Friday });
                         break;
-                    case RecurrenceDayOfWeek.Saturday:
+                    case "sa":
                         WeekDays.Add(new WeekDay() { DayOfWeek = DayOfWeek.Saturday });
                         break;
-                    case RecurrenceDayOfWeek.Sunday:
+                    case "su":
                         WeekDays.Add(new WeekDay() { DayOfWeek = DayOfWeek.Sunday });
                         break;
                     default:
@@ -190,33 +194,33 @@ namespace _De_SerializationLib
             return WeekDays;
         }
 
-        private static List<RecurrenceDayOfWeek> ConvertFromWeekDay(List<WeekDay> days)
+        private static List<string> ConvertFromWeekDay(List<WeekDay> days)
         {
-            var WeekDays = new List<RecurrenceDayOfWeek>();
+            var WeekDays = new List<string>();
             foreach (var day in days)
             {
                 switch (day.DayOfWeek)
                 {
                     case DayOfWeek.Monday:
-                        WeekDays.Add(RecurrenceDayOfWeek.Monday);
+                        WeekDays.Add("mo");
                         break;
                     case DayOfWeek.Tuesday:
-                        WeekDays.Add(RecurrenceDayOfWeek.Tuesday);
+                        WeekDays.Add("tu");
                         break;
                     case DayOfWeek.Wednesday:
-                        WeekDays.Add(RecurrenceDayOfWeek.Wednesday);
+                        WeekDays.Add("we");
                         break;
                     case DayOfWeek.Thursday:
-                        WeekDays.Add(RecurrenceDayOfWeek.Thursday);
+                        WeekDays.Add("th");
                         break;
                     case DayOfWeek.Friday:
-                        WeekDays.Add(RecurrenceDayOfWeek.Friday);
+                        WeekDays.Add("fr");
                         break;
                     case DayOfWeek.Saturday:
-                        WeekDays.Add(RecurrenceDayOfWeek.Saturday);
+                        WeekDays.Add("sa");
                         break;
                     case DayOfWeek.Sunday:
-                        WeekDays.Add(RecurrenceDayOfWeek.Sunday);
+                        WeekDays.Add("su");
                         break;
                     default:
                         break;
@@ -225,29 +229,5 @@ namespace _De_SerializationLib
             return WeekDays;
         }
 
-        private static IList<PeriodList> ConvertToPeriodList(List<TimePeriod> periodDates)
-        {
-            var periodList = new List<PeriodList>();
-            foreach (var date in periodDates)
-            {
-                var list = new PeriodList() { new Ical.Net.DataTypes.Period(new CalDateTime(date.StartTime), new CalDateTime(date.EndTime)) };
-                periodList.Add(list);
-            }
-            return periodList;
-        }
-
-        private static List<TimePeriod> ConvertFromPeriodList(IList<PeriodList> periodList)
-        {
-            var timePeriods = new List<TimePeriod>();
-            foreach (var period in periodList)
-            {
-                var timePeriod = new TimePeriod()
-                {
-                    StartTime = Convert.ToDateTime(period[0].StartTime),
-                    EndTime = Convert.ToDateTime(period[0].EndTime)
-                };
-            }
-            return timePeriods;
-        }
     }
 }
